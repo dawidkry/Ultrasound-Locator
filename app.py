@@ -61,14 +61,11 @@ with st.form("location_form", clear_on_submit=True):
     new_loc = st.text_input("Destination (e.g., Coleridge, RSU, Side Room 2)")
     staff_name = st.text_input("Your Name / Bleep")
     
-    # Shortcut buttons for the "Home Base"
-    return_to_base = st.form_submit_button("Return to AMU Reception")
+    # --- SWAPPED BUTTONS ---
+    # Primary action first: Check-Out
     submit = st.form_submit_button("Check-Out to New Location")
-
-    if return_to_base:
-        add_entry("AMU Reception (Base)", "System/Return")
-        st.success("Device returned to base!")
-        st.rerun()
+    # Secondary action second: Return to Base
+    return_to_base = st.form_submit_button("Return to AMU Reception")
 
     if submit:
         if new_loc and staff_name:
@@ -78,6 +75,13 @@ with st.form("location_form", clear_on_submit=True):
         else:
             st.error("Please fill in both fields.")
 
+    if return_to_base:
+        # Note: If they click return to base, we log it as the System/Return
+        # or you can require their name by checking 'if staff_name:' first.
+        add_entry("AMU Reception (Base)", staff_name if staff_name else "System/Return")
+        st.success("Device returned to base!")
+        st.rerun()
+
 # 3. Audit Trail (History)
 st.markdown("---")
 st.subheader("📜 Movement History (Audit Trail)")
@@ -86,5 +90,3 @@ if not history_df.empty:
     st.dataframe(history_df, use_container_width=True, hide_index=True)
 else:
     st.write("No history available.")
-
-
