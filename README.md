@@ -19,3 +19,5 @@ This project implements a **"Scan-to-Log"** workflow using QR codes to ensure th
 - **Database:** SQLite (Persistent relational storage)
 - **Data Handling:** Pandas
 - **Deployment:** Streamlit Community Cloud (linked via GitHub)
+
+Copyright (c) 2026 dawidkry
