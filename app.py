@@ -1,51 +1,91 @@
-from flask import Flask, render_template, request, redirect, url_for
-from flask_sqlalchemy import SQLAlchemy
+import streamlit as st
+import sqlite3
+import pandas as pd
 from datetime import datetime
-import pytz # Standard for handling timezones in clinical apps
 
-app = Flask(__name__)
+# --- DATABASE SETUP ---
+def init_db():
+    conn = sqlite3.connect('ultrasound_tracker.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS movements 
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                  location TEXT, 
+                  user_identity TEXT, 
+                  timestamp DATETIME)''')
+    conn.commit()
+    conn.close()
 
-# Database configuration - creates a file named 'tracker.db'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tracker.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+def add_entry(location, user):
+    conn = sqlite3.connect('ultrasound_tracker.db')
+    c = conn.cursor()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    c.execute("INSERT INTO movements (location, user_identity, timestamp) VALUES (?, ?, ?)", 
+              (location, user, now))
+    conn.commit()
+    conn.close()
 
-# Database Model: The Audit Log
-class AssetLog(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    location = db.Column(db.String(100), nullable=False)
-    user_identity = db.Column(db.String(100), nullable=False) # Name or Bleep
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+def get_history():
+    conn = sqlite3.connect('ultrasound_tracker.db')
+    df = pd.read_sql_query("SELECT timestamp, location, user_identity FROM movements ORDER BY id DESC", conn)
+    conn.close()
+    return df
 
-    def get_local_time(self):
-        # Converts UTC to local time for the display
-        return self.timestamp.strftime('%H:%M | %d %b')
+# Initialize DB on startup
+init_db()
 
-# Create the database file automatically
-with app.app_context():
-    db.create_all()
+# --- STREAMLIT UI ---
+st.set_page_config(page_title="AMU Ultrasound Tracker", page_icon="🩺")
 
-@app.route('/')
-def index():
-    # Fetch the current location (the last entry)
-    current_status = AssetLog.query.order_by(AssetLog.id.desc()).first()
-    # Fetch the last 10 movements for the audit trail
-    history = AssetLog.query.order_by(AssetLog.id.desc()).limit(10).all()
+# Header
+st.title("🩺 AMU Ultrasound Locator")
+st.markdown("---")
+
+# 1. Current Status Section
+history_df = get_history()
+
+if not history_df.empty:
+    current = history_df.iloc[0]
+    st.subheader("Current Status")
+    col1, col2 = st.columns(2)
+    col1.metric("Current Location", current['location'])
+    col2.metric("Last Seen", current['timestamp'].split()[1][:5]) # Shows just HH:MM
+    st.caption(f"Logged by: {current['user_identity']}")
+else:
+    st.info("No data logged yet. Please check in the device.")
+
+st.markdown("---")
+
+# 2. Update Location Form
+st.subheader("📍 Update Location")
+with st.form("location_form", clear_on_submit=True):
+    new_loc = st.text_input("Destination (e.g., Ward 4, Resus, Side Room 2)")
+    staff_name = st.text_input("Your Name / Bleep")
     
-    return render_template('index.html', status=current_status, history=history)
+    # Shortcut buttons for the "Home Base"
+    return_to_base = st.form_submit_button("Return to AMU Reception")
+    submit = st.form_submit_button("Check-Out to New Location")
 
-@app.route('/update', methods=['POST'])
-def update():
-    loc = request.form.get('location')
-    user = request.form.get('user_identity')
-    
-    if loc and user:
-        new_entry = AssetLog(location=loc, user_identity=user)
-        db.session.add(new_entry)
-        db.session.commit()
-    
-    return redirect(url_for('index'))
+    if return_to_base:
+        add_entry("AMU Reception (Base)", "System/Return")
+        st.success("Device returned to base!")
+        st.rerun()
 
-if __name__ == '__main__':
-    # Set host to 0.0.0.0 so it's accessible on your local network
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    if submit:
+        if new_loc and staff_name:
+            add_entry(new_loc, staff_name)
+            st.success(f"Location updated to {new_loc}")
+            st.rerun()
+        else:
+            st.error("Please fill in both fields.")
+
+# 3. Audit Trail (History)
+st.markdown("---")
+st.subheader("📜 Movement History (Audit Trail)")
+if not history_df.empty:
+    # Stylized dataframe for better readability on mobile
+    st.dataframe(history_df, use_container_width=True, hide_index=True)
+else:
+    st.write("No history available.")
+
+# Footer for clinical context
+st.caption("Developed for AMU Quality Improvement - Clinical Asset Tracking")
