@@ -87,5 +87,4 @@ if not history_df.empty:
 else:
     st.write("No history available.")
 
-# Footer for clinical context
-st.caption("Developed for AMU Quality Improvement - Clinical Asset Tracking")
+
