@@ -58,7 +58,7 @@ st.markdown("---")
 # 2. Update Location Form
 st.subheader("📍 Update Location")
 with st.form("location_form", clear_on_submit=True):
-    new_loc = st.text_input("Destination (e.g., Ward 4, Resus, Side Room 2)")
+    new_loc = st.text_input("Destination (e.g., Coleridge, RSU, Side Room 2)")
     staff_name = st.text_input("Your Name / Bleep")
     
     # Shortcut buttons for the "Home Base"
