@@ -36,6 +36,17 @@ init_db()
 # --- STREAMLIT UI ---
 st.set_page_config(page_title="AMU Ultrasound Tracker", page_icon="🩺")
 
+# --- HIDE STREAMLIT MENU & FOOTER ---
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            header {visibility: hidden;}
+            footer {visibility: hidden;}
+            stDecoration {display:none;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
 # Header
 st.title("🩺 AMU Ultrasound Locator")
 st.markdown("---")
@@ -61,7 +72,6 @@ with st.form("location_form", clear_on_submit=True):
     new_loc = st.text_input("Destination (e.g., Coleridge, RSU, Side Room 2)")
     staff_name = st.text_input("Your Name / Bleep")
     
-    # --- SWAPPED BUTTONS ---
     # Primary action first: Check-Out
     submit = st.form_submit_button("Check-Out to New Location")
     # Secondary action second: Return to Base
@@ -76,8 +86,6 @@ with st.form("location_form", clear_on_submit=True):
             st.error("Please fill in both fields.")
 
     if return_to_base:
-        # Note: If they click return to base, we log it as the System/Return
-        # or you can require their name by checking 'if staff_name:' first.
         add_entry("AMU Reception (Base)", staff_name if staff_name else "System/Return")
         st.success("Device returned to base!")
         st.rerun()
@@ -86,7 +94,6 @@ with st.form("location_form", clear_on_submit=True):
 st.markdown("---")
 st.subheader("📜 Movement History (Audit Trail)")
 if not history_df.empty:
-    # Stylized dataframe for better readability on mobile
     st.dataframe(history_df, use_container_width=True, hide_index=True)
 else:
     st.write("No history available.")
